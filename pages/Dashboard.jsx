@@ -1,104 +1,213 @@
 import { StyleSheet, Text, View, Image, SafeAreaView } from "react-native";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Footer from "../components/Footer";
-import { useSelector, useDispatch } from "react-redux";
+import { getDatabase, ref, onValue } from "firebase/database";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 export default function Dashboard() {
-  const date = useSelector((state) => state.editInfo.date);
+  const timeSinceQuitRef = useRef([0, 0, 0, 0, 0, 0, 0]);
+  const intervalIdRef = useRef(null);
+  const quitDateRef = useRef(null);
+  const [smokesPerPack, setSmokesPerPack] = useState(0);
 
-  const [timeSinceQuit, setTimeSinceQuit] = useState({
-    months: 0,
-    weeks: 0,
-    days: 0,
-    hours: 0,
-    minutes: 0,
-    seconds: 0,
-  });
+  const [smokesPerDay, setSmokesPerDay] = useState(0);
+  const [pricePerPack, setPricePerPack] = useState(0);
+
+  const millisecondsPerSecond = 1000;
+  const millisecondsPerMinute = 60 * millisecondsPerSecond;
+  const millisecondsPerHour = 60 * millisecondsPerMinute;
+  const millisecondsPerDay = 24 * millisecondsPerHour;
+  const millisecondsPerWeek = 7 * millisecondsPerDay;
+  const millisecondsPerMonth = 30 * millisecondsPerDay;
+  const millisecondsPerYear = 365 * millisecondsPerDay;
+
+  const durationInMilliseconds =
+    timeSinceQuitRef.current[0] * millisecondsPerYear +
+    timeSinceQuitRef.current[1] * millisecondsPerMonth +
+    timeSinceQuitRef.current[2] * millisecondsPerWeek +
+    timeSinceQuitRef.current[3] * millisecondsPerDay +
+    timeSinceQuitRef.current[4] * millisecondsPerHour +
+    timeSinceQuitRef.current[5] * millisecondsPerMinute +
+    timeSinceQuitRef.current[6] * millisecondsPerSecond;
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      const quitDate = date;
-      const timeDiff = new Date() - quitDate;
+    const fetchUserData = async () => {
+      try {
+        const auth = getAuth();
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+          if (user) {
+            const userId = user.uid;
+            const db = getDatabase();
+            const userRef = ref(db, "users/" + userId);
 
-      const seconds = Math.floor(timeDiff / 1000);
-      const minutes = Math.floor(seconds / 60);
-      const hours = Math.floor(minutes / 60);
-      const days = Math.floor(hours / 24);
-      const weeks = Math.floor(days / 7);
-      const months = Math.floor(days / 30);
+            const unsubscribeSnapshot = onValue(userRef, (snapshot) => {
+              const userData = snapshot.val();
+              if (userData && userData.dateQuit) {
+                const newQuitDate = new Date(userData.dateQuit);
+                quitDateRef.current = newQuitDate;
+                const retrievedSmokesPerDay = parseInt(userData.smokesday);
+                const retrievedPricePerPack = parseFloat(userData.smokesPrice);
+                const retrievedSmokesPerPack = parseInt(userData.smokesPerPack);
+                setSmokesPerPack(retrievedSmokesPerPack);
 
-      setTimeSinceQuit({
-        months,
-        weeks: weeks % 4,
-        days: days % 7,
-        hours: hours % 24,
-        minutes: minutes % 60,
-        seconds: seconds % 60,
-      });
+                setSmokesPerDay(retrievedSmokesPerDay);
+                setPricePerPack(retrievedPricePerPack);
+                updateTimeSinceQuit(
+                  retrievedSmokesPerDay,
+                  retrievedPricePerPack
+                );
+                smokesPerPack.current = parseInt(userData.smokesPerPack);
+              }
+            });
+
+            return () => {
+              unsubscribeSnapshot();
+            };
+          }
+        });
+
+        return () => {
+          unsubscribe();
+        };
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  const updateTimeSinceQuit = (smokesPerDay, pricePerPack) => {
+    if (intervalIdRef.current) {
+      clearInterval(intervalIdRef.current);
+    }
+
+    const newIntervalId = setInterval(() => {
+      const currentDate = new Date();
+      const timeDifference = currentDate - quitDateRef.current;
+      const newTimeSinceQuit = formatTimeDuration(timeDifference);
+      timeSinceQuitRef.current = newTimeSinceQuit;
     }, 1000);
 
-    return () => clearInterval(interval);
-  }, []);
+    intervalIdRef.current = newIntervalId;
+  };
+
+  const moneySaved = (smokesPerDay, pricePerPack, timeSinceQuit) => {
+    const millisecondsPerDay = 24 * 60 * 60 * 1000;
+
+    // Calculate the number of whole days since quitting
+    const wholeDays = Math.floor(timeSinceQuit / millisecondsPerDay);
+
+    // Calculate the fraction of a day
+    const fractionOfDay =
+      (timeSinceQuit % millisecondsPerDay) / millisecondsPerDay;
+
+    // Calculate the total number of cigarettes not smoked
+    const cigarettesNotSmoked =
+      wholeDays * smokesPerDay + smokesPerDay * fractionOfDay;
+
+    // Calculate the total amount of money saved
+    const saved = cigarettesNotSmoked * (pricePerPack / smokesPerPack);
+
+    return saved;
+  };
+
+  const formatTimeDuration = (duration) => {
+    // Calculate the years, months, weeks, days, hours, minutes, and seconds from the duration
+    // Implement your own logic here based on your specific requirements
+    // Example implementation:
+    const millisecondsPerSecond = 1000;
+    const millisecondsPerMinute = 60 * millisecondsPerSecond;
+    const millisecondsPerHour = 60 * millisecondsPerMinute;
+    const millisecondsPerDay = 24 * millisecondsPerHour;
+    const millisecondsPerWeek = 7 * millisecondsPerDay;
+    const millisecondsPerMonth = 30 * millisecondsPerDay;
+    const millisecondsPerYear = 365 * millisecondsPerDay;
+
+    const years = Math.floor(duration / millisecondsPerYear);
+    duration %= millisecondsPerYear;
+
+    const months = Math.floor(duration / millisecondsPerMonth);
+    duration %= millisecondsPerMonth;
+
+    const weeks = Math.floor(duration / millisecondsPerWeek);
+    duration %= millisecondsPerWeek;
+
+    const days = Math.floor(duration / millisecondsPerDay);
+    duration %= millisecondsPerDay;
+
+    const hours = Math.floor(duration / millisecondsPerHour);
+    duration %= millisecondsPerHour;
+
+    const minutes = Math.floor(duration / millisecondsPerMinute);
+    duration %= millisecondsPerMinute;
+
+    const seconds = Math.floor(duration / millisecondsPerSecond);
+
+    return [years, months, weeks, days, hours, minutes, seconds];
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <View>
         <Text style={styles.header}>Quit Smoking</Text>
-        <Text
-          style={
-            (styles.header,
-            {
-              color: "#F9CC0B",
-              fontSize: 20,
-              textAlign: "center",
-              fontWeight: "500",
-            })
-          }
-        >
-          Time without cigarette
-        </Text>
-      </View>
-      <View style={styles.counter}>
-        <View style={styles.timeUnit}>
-          <Text style={styles.timeValue}>{timeSinceQuit.months}</Text>
-          <Text style={styles.timeLabel}>MONTHS</Text>
-        </View>
-        <View style={styles.timeUnit}>
-          <Text style={styles.timeValue}>{timeSinceQuit.weeks}</Text>
-          <Text style={styles.timeLabel}>WEEKS</Text>
-        </View>
-        <View style={styles.timeUnit}>
-          <Text style={styles.timeValue}>{timeSinceQuit.days}</Text>
-          <Text style={styles.timeLabel}>DAYS</Text>
-        </View>
-        <View style={styles.timeUnit}>
-          <Text style={styles.timeValue}>{timeSinceQuit.hours}</Text>
-          <Text style={styles.timeLabel}>HOURS</Text>
-        </View>
-        <View style={styles.timeUnit}>
-          <Text style={styles.timeValue}>{timeSinceQuit.minutes}</Text>
-          <Text style={styles.timeLabel}>MINUTES</Text>
-        </View>
-        <View style={styles.timeUnit}>
-          <Text style={styles.timeValue}>{timeSinceQuit.seconds}</Text>
-          <Text style={styles.timeLabel}>SECONDS</Text>
-        </View>
       </View>
       <Text
-        style={
-          (styles.header,
-          {
-            color: "#F9CC0B",
-            fontSize: 20,
-            textAlign: "center",
-            fontWeight: "500",
-            marginTop: 30,
-          })
-        }
+        style={{
+          color: "#F9CC0B",
+          fontSize: 20,
+          textAlign: "center",
+          fontWeight: "500",
+          marginTop: 30,
+        }}
+      >
+        Time Smoke Free
+      </Text>
+      <View style={styles.money}>
+        <Text style={styles.timeSinceQuit}>
+          Seconds: {timeSinceQuitRef.current[6]}
+        </Text>
+        <Text style={styles.timeSinceQuit}>
+          Minutes: {timeSinceQuitRef.current[5]}
+        </Text>
+        <Text style={styles.timeSinceQuit}>
+          Hours: {timeSinceQuitRef.current[4]}
+        </Text>
+        <Text style={styles.timeSinceQuit}>
+          Days: {timeSinceQuitRef.current[3]}
+        </Text>
+        <Text style={styles.timeSinceQuit}>
+          Weeks: {timeSinceQuitRef.current[2]}
+        </Text>
+        <Text style={styles.timeSinceQuit}>
+          Months: {timeSinceQuitRef.current[1]}
+        </Text>
+        <Text style={styles.timeSinceQuit}>
+          Years: {timeSinceQuitRef.current[0]}
+        </Text>
+      </View>
+      <Text
+        style={{
+          color: "#F9CC0B",
+          fontSize: 20,
+          textAlign: "center",
+          fontWeight: "500",
+          marginTop: 30,
+        }}
       >
         Money Saved
       </Text>
-      <View style={styles.money}></View>
+      <View style={styles.money}>
+        <Text style={styles.moneySaved}>
+          $
+          {moneySaved(
+            smokesPerDay,
+            pricePerPack,
+            durationInMilliseconds
+          ).toFixed(2)}
+        </Text>
+      </View>
+
       <Footer />
     </SafeAreaView>
   );
@@ -115,51 +224,41 @@ const styles = StyleSheet.create({
   },
   header: {
     textAlign: "center",
-    fontWeight: 800,
+    fontWeight: "800",
     color: "white",
     fontSize: 20,
     marginBottom: 10,
     marginTop: 20,
   },
-  counter: {
-    borderWidth: 2,
-    borderRadius: 15,
-    height: 100,
-    width: "85%",
-    borderColor: "#F9CC0B",
-    backgroundColor: "grey",
-    marginTop: 20,
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    paddingHorizontal: 10,
-  },
-  timeUnit: {
-    alignItems: "center",
-  },
-  timeValue: {
-    fontSize: 20,
-    color: "white",
-    fontWeight: "600",
-    marginBottom: 5,
-  },
-  timeLabel: {
-    fontSize: 10,
-    color: "white",
-    fontWeight: "500",
-    textTransform: "uppercase",
-  },
   money: {
+    display: "flex",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-evenly",
     borderWidth: 2,
     borderRadius: 15,
-    height: 100,
+    height: 150,
     width: "85%",
     borderColor: "#F9CC0B",
     backgroundColor: "grey",
     marginTop: 20,
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
     paddingHorizontal: 10,
+  },
+
+  timeSinceQuit: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "center",
+    width: "48%", // Adjust the width based on your desired spacing and layout
+    marginBottom: 20, // Add margin to create spacing between items
+  },
+  moneySaved: {
+    color: "white",
+    fontSize: 48,
+    fontWeight: "bold",
+    textAlign: "center",
+    width: "100%", // Adjust the width based on your desired spacing and layout
+    marginTop: 40, // Add margin to create spacing between items
   },
 });

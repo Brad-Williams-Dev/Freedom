@@ -2,9 +2,14 @@ import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { useAuthentication } from "../utils/hooks/useAuthentication";
 
 const Footer = () => {
   const navigation = useNavigation();
+
+  const handleLogout = () => {
+    navigation.navigate("SignIn");
+  };
 
   return (
     <View style={styles.footer}>
@@ -19,6 +24,9 @@ const Footer = () => {
       </TouchableOpacity>
       <TouchableOpacity onPress={() => navigation.navigate("Settings")}>
         <Ionicons name="ios-settings" size={24} color="#F9CC0B" />
+      </TouchableOpacity>
+      <TouchableOpacity onPress={handleLogout}>
+        <Ionicons name="log-out" size={24} color="#F9CC0B" />
       </TouchableOpacity>
     </View>
   );

@@ -1,19 +1,17 @@
 {
   "expo": {
     "name": "Freedom",
-    "slug": "Freedom",
+    "slug": "freedom",
     "version": "1.0.0",
     "orientation": "portrait",
-
+    "scheme": "freedom",
     "userInterfaceStyle": "light",
-
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       }
     },

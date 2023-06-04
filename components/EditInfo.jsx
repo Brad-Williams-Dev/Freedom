@@ -47,12 +47,12 @@ export default function EditInfo(props) {
                   const quitDate = new Date(userData.dateQuit);
                   const pricePerPack = userData.smokesPrice;
                   const smokesPerDay = userData.smokesday;
-                  const numberPerPack = userData.smokesPerPack;
+                  const smokesPerPack = userData.smokesPerPack;
 
                   setDateQuit(quitDate);
                   setSmokesday(smokesPerDay);
                   setSmokesPrice(pricePerPack);
-                  setSmokesPerPack(numberPerPack);
+                  setSmokesPerPack(smokesPerPack);
                 }
               });
 

@@ -5,10 +5,10 @@ import { getDatabase, ref, onValue } from "firebase/database";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 export default function Dashboard() {
-  const [timeSinceQuit, setTimeSinceQuit] = useState([0, 0, 0, 0, 0, 0, 0]);
+  const [timeSinceQuit, setTimeSinceQuit] = useState([0, 0, 0, 0, 0, 0, 0, 0]);
   const intervalIdRef = useRef(null);
   const quitDateRef = useRef(null);
-  const [smokesPerPack, setSmokesPerPack] = useState(0);
+  const [smokesPerPackValue, setSmokesPerPackValue] = useState(0);
   const [moneySaved, setMoneySaved] = useState(0);
   const [smokesPerDay, setSmokesPerDay] = useState(0);
   const [pricePerPack, setPricePerPack] = useState(0);
@@ -48,7 +48,7 @@ export default function Dashboard() {
                 const retrievedSmokesPerDay = parseInt(userData.smokesday);
                 const retrievedPricePerPack = parseFloat(userData.smokesPrice);
                 const retrievedSmokesPerPack = parseInt(userData.smokesPerPack);
-                setSmokesPerPack(retrievedSmokesPerPack);
+                setSmokesPerPackValue(retrievedSmokesPerPack);
                 setSmokesPerDay(retrievedSmokesPerDay);
                 setPricePerPack(retrievedPricePerPack);
               }
@@ -84,12 +84,10 @@ export default function Dashboard() {
         durationInMilliseconds
       );
       setMoneySaved(saved);
-    }, 1000);
+    }, 500);
 
     return () => clearInterval(intervalId);
   }, [smokesPerDay, pricePerPack, durationInMilliseconds]);
-
-  // ...
 
   const calculateMoneySaved = (smokesPerDay, pricePerPack, timeSinceQuit) => {
     const millisecondsPerDay = 24 * 60 * 60 * 1000;
@@ -106,7 +104,7 @@ export default function Dashboard() {
       wholeDays * smokesPerDay + smokesPerDay * fractionOfDay;
 
     // Calculate the total amount of money saved
-    const saved = cigarettesNotSmoked * (pricePerPack / smokesPerPack);
+    const saved = cigarettesNotSmoked * (pricePerPack / smokesPerPackValue);
 
     return saved;
   };
@@ -143,7 +141,9 @@ export default function Dashboard() {
 
     const seconds = Math.floor(duration / millisecondsPerSecond);
 
-    return [years, months, weeks, days, hours, minutes, seconds];
+    const milliseconds = Math.floor(duration % millisecondsPerSecond);
+
+    return [years, months, weeks, days, hours, minutes, seconds, milliseconds];
   };
 
   return (
@@ -163,13 +163,40 @@ export default function Dashboard() {
         Time Smoke Free
       </Text>
       <View style={styles.money}>
-        <Text style={styles.timeSinceQuit}>Seconds: {timeSinceQuit[6]}</Text>
-        <Text style={styles.timeSinceQuit}>Minutes: {timeSinceQuit[5]}</Text>
-        <Text style={styles.timeSinceQuit}>Hours: {timeSinceQuit[4]}</Text>
-        <Text style={styles.timeSinceQuit}>Days: {timeSinceQuit[3]}</Text>
-        <Text style={styles.timeSinceQuit}>Weeks: {timeSinceQuit[2]}</Text>
-        <Text style={styles.timeSinceQuit}>Months: {timeSinceQuit[1]}</Text>
-        <Text style={styles.timeSinceQuit}>Years: {timeSinceQuit[0]}</Text>
+        <View style={styles.timeSection}>
+          <Text style={styles.timeSinceQuit}>{timeSinceQuit[0]}</Text>
+          <Text style={styles.timeSinceQuitTitle}>Years</Text>
+        </View>
+        <View style={styles.timeSection}>
+          <Text style={styles.timeSinceQuit}>{timeSinceQuit[1]}</Text>
+          <Text style={styles.timeSinceQuitTitle}>Months</Text>
+        </View>
+        <View style={styles.timeSection}>
+          <Text style={styles.timeSinceQuit}>{timeSinceQuit[2]}</Text>
+          <Text style={styles.timeSinceQuitTitle}>Weeks</Text>
+        </View>
+        <View style={styles.timeSection}>
+          <Text style={styles.timeSinceQuit}>{timeSinceQuit[3]}</Text>
+          <Text style={styles.timeSinceQuitTitle}>Days</Text>
+        </View>
+      </View>
+      <View style={styles.money}>
+        <View style={styles.timeSection}>
+          <Text style={styles.timeSinceQuit}>{timeSinceQuit[4]}</Text>
+          <Text style={styles.timeSinceQuitTitle}>Hours</Text>
+        </View>
+        <View style={styles.timeSection}>
+          <Text style={styles.timeSinceQuit}>{timeSinceQuit[5]}</Text>
+          <Text style={styles.timeSinceQuitTitle}>Minutes</Text>
+        </View>
+        <View style={styles.timeSection}>
+          <Text style={styles.timeSinceQuit}>{timeSinceQuit[6]}</Text>
+          <Text style={styles.timeSinceQuitTitle}>Seconds</Text>
+        </View>
+        <View style={styles.timeSection}>
+          <Text style={styles.timeSinceQuit}>{timeSinceQuit[7]}</Text>
+          <Text style={styles.timeSinceQuitTitle}>Milisec</Text>
+        </View>
       </View>
       <Text
         style={{
@@ -211,25 +238,36 @@ const styles = StyleSheet.create({
   money: {
     display: "flex",
     flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-evenly",
     borderWidth: 2,
     borderRadius: 15,
-    height: 150,
+    height: 100,
     width: "85%",
     borderColor: "#070808",
     backgroundColor: "#070808",
     marginTop: 20,
     paddingHorizontal: 10,
   },
-
+  timeSection: {
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center",
+    width: "25%", // Adjust the width based on your desired spacing and layout
+  },
   timeSinceQuit: {
     color: "white",
     fontSize: 16,
     fontWeight: "bold",
     textAlign: "center",
     width: "48%", // Adjust the width based on your desired spacing and layout
-    marginBottom: 20, // Add margin to create spacing between items
+    marginBottom: 10,
+    marginTop: 10,
+  },
+  timeSinceQuitTitle: {
+    color: "grey",
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "center",
   },
   moneySaved: {
     color: "white",
@@ -237,6 +275,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
     width: "100%", // Adjust the width based on your desired spacing and layout
-    marginTop: 40, // Add margin to create spacing between items
+    marginTop: 15, // Add margin to create spacing between items
   },
 });

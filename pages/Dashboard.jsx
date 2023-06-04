@@ -5,11 +5,11 @@ import { getDatabase, ref, onValue } from "firebase/database";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 export default function Dashboard() {
-  const timeSinceQuitRef = useRef([0, 0, 0, 0, 0, 0, 0]);
+  const [timeSinceQuit, setTimeSinceQuit] = useState([0, 0, 0, 0, 0, 0, 0]);
   const intervalIdRef = useRef(null);
   const quitDateRef = useRef(null);
   const [smokesPerPack, setSmokesPerPack] = useState(0);
-
+  const [moneySaved, setMoneySaved] = useState(0);
   const [smokesPerDay, setSmokesPerDay] = useState(0);
   const [pricePerPack, setPricePerPack] = useState(0);
 
@@ -22,13 +22,13 @@ export default function Dashboard() {
   const millisecondsPerYear = 365 * millisecondsPerDay;
 
   const durationInMilliseconds =
-    timeSinceQuitRef.current[0] * millisecondsPerYear +
-    timeSinceQuitRef.current[1] * millisecondsPerMonth +
-    timeSinceQuitRef.current[2] * millisecondsPerWeek +
-    timeSinceQuitRef.current[3] * millisecondsPerDay +
-    timeSinceQuitRef.current[4] * millisecondsPerHour +
-    timeSinceQuitRef.current[5] * millisecondsPerMinute +
-    timeSinceQuitRef.current[6] * millisecondsPerSecond;
+    timeSinceQuit[0] * millisecondsPerYear +
+    timeSinceQuit[1] * millisecondsPerMonth +
+    timeSinceQuit[2] * millisecondsPerWeek +
+    timeSinceQuit[3] * millisecondsPerDay +
+    timeSinceQuit[4] * millisecondsPerHour +
+    timeSinceQuit[5] * millisecondsPerMinute +
+    timeSinceQuit[6] * millisecondsPerSecond;
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -49,14 +49,8 @@ export default function Dashboard() {
                 const retrievedPricePerPack = parseFloat(userData.smokesPrice);
                 const retrievedSmokesPerPack = parseInt(userData.smokesPerPack);
                 setSmokesPerPack(retrievedSmokesPerPack);
-
                 setSmokesPerDay(retrievedSmokesPerDay);
                 setPricePerPack(retrievedPricePerPack);
-                updateTimeSinceQuit(
-                  retrievedSmokesPerDay,
-                  retrievedPricePerPack
-                );
-                smokesPerPack.current = parseInt(userData.smokesPerPack);
               }
             });
 
@@ -77,22 +71,27 @@ export default function Dashboard() {
     fetchUserData();
   }, []);
 
-  const updateTimeSinceQuit = (smokesPerDay, pricePerPack) => {
-    if (intervalIdRef.current) {
-      clearInterval(intervalIdRef.current);
-    }
-
-    const newIntervalId = setInterval(() => {
+  useEffect(() => {
+    const intervalId = setInterval(() => {
       const currentDate = new Date();
       const timeDifference = currentDate - quitDateRef.current;
       const newTimeSinceQuit = formatTimeDuration(timeDifference);
-      timeSinceQuitRef.current = newTimeSinceQuit;
+      setTimeSinceQuit(newTimeSinceQuit);
+
+      const saved = calculateMoneySaved(
+        smokesPerDay,
+        pricePerPack,
+        durationInMilliseconds
+      );
+      setMoneySaved(saved);
     }, 1000);
 
-    intervalIdRef.current = newIntervalId;
-  };
+    return () => clearInterval(intervalId);
+  }, [smokesPerDay, pricePerPack, durationInMilliseconds]);
 
-  const moneySaved = (smokesPerDay, pricePerPack, timeSinceQuit) => {
+  // ...
+
+  const calculateMoneySaved = (smokesPerDay, pricePerPack, timeSinceQuit) => {
     const millisecondsPerDay = 24 * 60 * 60 * 1000;
 
     // Calculate the number of whole days since quitting
@@ -164,27 +163,13 @@ export default function Dashboard() {
         Time Smoke Free
       </Text>
       <View style={styles.money}>
-        <Text style={styles.timeSinceQuit}>
-          Seconds: {timeSinceQuitRef.current[6]}
-        </Text>
-        <Text style={styles.timeSinceQuit}>
-          Minutes: {timeSinceQuitRef.current[5]}
-        </Text>
-        <Text style={styles.timeSinceQuit}>
-          Hours: {timeSinceQuitRef.current[4]}
-        </Text>
-        <Text style={styles.timeSinceQuit}>
-          Days: {timeSinceQuitRef.current[3]}
-        </Text>
-        <Text style={styles.timeSinceQuit}>
-          Weeks: {timeSinceQuitRef.current[2]}
-        </Text>
-        <Text style={styles.timeSinceQuit}>
-          Months: {timeSinceQuitRef.current[1]}
-        </Text>
-        <Text style={styles.timeSinceQuit}>
-          Years: {timeSinceQuitRef.current[0]}
-        </Text>
+        <Text style={styles.timeSinceQuit}>Seconds: {timeSinceQuit[6]}</Text>
+        <Text style={styles.timeSinceQuit}>Minutes: {timeSinceQuit[5]}</Text>
+        <Text style={styles.timeSinceQuit}>Hours: {timeSinceQuit[4]}</Text>
+        <Text style={styles.timeSinceQuit}>Days: {timeSinceQuit[3]}</Text>
+        <Text style={styles.timeSinceQuit}>Weeks: {timeSinceQuit[2]}</Text>
+        <Text style={styles.timeSinceQuit}>Months: {timeSinceQuit[1]}</Text>
+        <Text style={styles.timeSinceQuit}>Years: {timeSinceQuit[0]}</Text>
       </View>
       <Text
         style={{
@@ -198,14 +183,7 @@ export default function Dashboard() {
         Money Saved
       </Text>
       <View style={styles.money}>
-        <Text style={styles.moneySaved}>
-          $
-          {moneySaved(
-            smokesPerDay,
-            pricePerPack,
-            durationInMilliseconds
-          ).toFixed(2)}
-        </Text>
+        <Text style={styles.moneySaved}>${moneySaved.toFixed(2)}</Text>
       </View>
 
       <Footer />
@@ -217,7 +195,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     flexDirection: "column",
-    backgroundColor: "#848884",
+    backgroundColor: "#17181a",
     alignSelf: "stretch",
     width: null,
     alignItems: "center",
@@ -239,8 +217,8 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     height: 150,
     width: "85%",
-    borderColor: "#F9CC0B",
-    backgroundColor: "grey",
+    borderColor: "#070808",
+    backgroundColor: "#070808",
     marginTop: 20,
     paddingHorizontal: 10,
   },
